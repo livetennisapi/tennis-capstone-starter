@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this starter in a course or a paper, please cite it as below, and cite the dataset too."
+title: "Tennis capstone starter: does the score predict the match?"
+type: software
+version: 1.0.0
+date-released: "2026-11-20"
+authors:
+  - name: "Live Tennis API"
+    website: "https://livetennisapi.com"
+    email: "hello@livetennisapi.com"
+repository-code: "https://github.com/livetennisapi/tennis-capstone-starter"
+url: "https://livetennisapi.com/teach/capstone"
+license: MIT
+abstract: >-
+  Starter code for a capstone in data science and statistics courses.
+  Students load the public sample of the Live Tennis API point-by-point
+  dataset, rebuild the independent-points model of tennis scoring, measure
+  its calibration against real results and write up where it fails. The
+  code is MIT. The data is CC BY-NC 4.0 and is downloaded from Zenodo.
+keywords:
+  - teaching
+  - capstone
+  - data science
+  - statistics
+  - calibration
+  - tennis
+  - sports analytics
+references:
+  - type: data
+    title: "Tennis Point-by-Point Dataset — ATP, WTA, Challenger, ITF (Public Sample)"
+    authors:
+      - name: "Live Tennis API"
+    version: "1.0.3"
+    doi: "10.5281/zenodo.23718893"
+    publisher:
+      name: "Zenodo"
+    license: CC-BY-NC-4.0
+    url: "https://doi.org/10.5281/zenodo.22048730"
