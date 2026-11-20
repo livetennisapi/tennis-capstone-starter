@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tennis-capstone-starter"
+version = "1.0.0"
+description = "Starter code for the tennis data science capstone \"Does the score predict the match?\""
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Live Tennis API", email = "hello@livetennisapi.com" }]
+keywords = ["tennis", "capstone", "data science", "statistics", "calibration", "teaching"]
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+notebook = ["jupyterlab>=4"]
+dev = ["pytest>=8", "ruff>=0.6", "nbformat>=5.10"]
+
+[project.urls]
+Homepage = "https://livetennisapi.com/teach/capstone"
+Documentation = "https://docs.livetennisapi.com"
+Repository = "https://github.com/livetennisapi/tennis-capstone-starter"
+Dataset = "https://doi.org/10.5281/zenodo.22048730"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["capstone"]

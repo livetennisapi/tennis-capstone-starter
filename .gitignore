@@ -1,0 +1,10 @@
+data/
+*.part
+__pycache__/
+*.egg-info/
+.venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
