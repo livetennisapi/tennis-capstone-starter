@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import json
 import os
 import sys
@@ -240,8 +241,9 @@ def main(argv: list[str] | None = None) -> int:
         else:
             download(args.dir)
             print(f'Done. Data under {LICENCE}: {LICENCE_URL}')
-    except (DataError, OSError) as exc:
-        # OSError covers no network, a timeout, a dropped connection and a full disk.
+    except (DataError, OSError, http.client.HTTPException) as exc:
+        # OSError covers no network, a timeout and a full disk. HTTPException covers a
+        # download cut off half way.
         print(f'error: {exc}', file=sys.stderr)
         return 1
     return 0

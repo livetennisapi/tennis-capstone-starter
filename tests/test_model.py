@@ -16,10 +16,14 @@ A, B = 0.64, 0.62
 
 
 def call(fn, *args, **kwargs):
+    """Skip only while the function is still the starter's stub. Any other
+    NotImplementedError, for a score the student's code does not handle yet, fails."""
     try:
         return fn(*args, **kwargs)
     except NotImplementedError as exc:
-        pytest.skip(str(exc))
+        if str(exc).startswith('Milestone 2: write '):
+            pytest.skip(str(exc))
+        raise
 
 
 def close_to_page(value: float, page_percent: float) -> bool:
@@ -154,6 +158,35 @@ def test_each_tiebreak_point_moves_the_chance_the_right_way(points, a_serving):
     w = A if a_serving else 1 - B
     assert math.isclose(now, w * won + (1 - w) * lost, abs_tol=1e-12)
     assert lost < now < won
+
+
+def test_the_ten_point_final_set_matches_the_calculator():
+    """The calculator with a tie-break to 10 in the final set shows 56.8% for that set and
+    60.0% for the match (?a=64&b=62&sets=3&final=10)."""
+    assert close_to_page(call(model.set_win, A, B, tiebreak_target=10), 56.8)
+    assert close_to_page(call(model.match_win, A, B, best_of=3, final_tiebreak=10), 60.0)
+    assert close_to_page(call(model.match_win_from, A, B, sets=(1, 1), final_tiebreak=10),
+                         56.8)
+
+
+@pytest.mark.parametrize('points', [(3, 0), (0, 3), (3, 3), (4, 3)], ids=str)
+def test_the_serve_changes_after_each_game(points):
+    """At 4-4 in the final set with A serving, the point that ends the game hands the serve
+    to B for the next one."""
+    here = dict(sets=(1, 1), final_tiebreak=10)
+    now = call(model.match_win_from, A, B, **here, games=(4, 4), points=points)
+    a_pts, b_pts = points
+    if a_pts >= 3 and a_pts - b_pts >= 1:
+        won = call(model.match_win_from, A, B, **here, games=(5, 4), a_serving=False)
+    else:
+        won = call(model.match_win_from, A, B, **here, games=(4, 4),
+                   points=(a_pts + 1, b_pts))
+    if b_pts >= 3 and b_pts - a_pts >= 1:
+        lost = call(model.match_win_from, A, B, **here, games=(4, 5), a_serving=False)
+    else:
+        lost = call(model.match_win_from, A, B, **here, games=(4, 4),
+                    points=(a_pts, b_pts + 1))
+    assert math.isclose(now, A * won + (1 - A) * lost, abs_tol=1e-12)
 
 
 def test_a_ten_point_tiebreak_is_played_in_the_final_set_only():

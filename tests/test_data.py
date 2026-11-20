@@ -174,3 +174,17 @@ def test_redirects_stay_on_https():
 def test_data_dir_follows_the_environment(monkeypatch, tmp_path):
     monkeypatch.setenv('CAPSTONE_DATA_DIR', str(tmp_path))
     assert data._default_dir() == tmp_path
+
+
+def test_a_download_cut_off_half_way_is_an_error_line(tmp_path, monkeypatch, pinned, capsys):
+    import http.client
+
+    class Cut(io.BytesIO):
+        def read(self, *args):
+            raise http.client.IncompleteRead(b'', 10)
+
+    fake = FakeZenodo(BLOBS)
+    monkeypatch.setattr(data, '_get', lambda url: fake(url) if '/files/' not in url else Cut())
+    assert data.main(['--dir', str(tmp_path)]) == 1
+    assert capsys.readouterr().err.startswith('error: ')
+    assert not list(tmp_path.glob('*.part'))
