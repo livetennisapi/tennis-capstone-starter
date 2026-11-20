@@ -64,9 +64,9 @@ The data is the public sample of the Live Tennis API point-by-point dataset, DOI
 
 | File | Rows | A row is |
 | --- | --- | --- |
-| `matches.csv.gz` | 173,571 | One completed match, 1 January 2023 to 13 August 2026 |
+| `matches.csv.gz` | 173,571 | One match. The record gives the range as 1 January 2023 to 13 August 2026 |
 | `players.csv.gz` | 32,678 | One player or doubles team, with country, birth date and playing hand where known |
-| `points_sample_2026-06.csv.gz` | 951,064 | One score state, for 5,380 completed matches of June 2026 |
+| `points_sample_2026-06.csv.gz` | 951,064 | One score state, for 5,380 matches of June 2026 |
 
 [`src/capstone/data.py`](src/capstone/data.py) asks the Zenodo API for the record and refuses any version but 1.0.3. It checks each file's size, the MD5 checksum Zenodo lists and a SHA-256 checksum pinned in the code. A download that fails a check is deleted, never used. `--check` only reports.
 

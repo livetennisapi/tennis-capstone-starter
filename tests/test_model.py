@@ -6,7 +6,10 @@ so a check passes when your value rounds to the page's figure.
 """
 from __future__ import annotations
 
+import ast
+import inspect
 import math
+import textwrap
 
 import pytest
 
@@ -15,15 +18,22 @@ from capstone import model
 A, B = 0.64, 0.62
 
 
+def is_stub(fn) -> bool:
+    """True while the function body is still only the starter's raise NotImplementedError.
+    Once a student writes any code in it, every check runs, and a NotImplementedError left
+    for some scores fails instead of skipping."""
+    tree = ast.parse(textwrap.dedent(inspect.getsource(fn)))
+    body = tree.body[0].body
+    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+        body = body[1:]
+    return (len(body) == 1 and isinstance(body[0], ast.Raise)
+            and 'NotImplementedError' in ast.unparse(body[0]))
+
+
 def call(fn, *args, **kwargs):
-    """Skip only while the function is still the starter's stub. Any other
-    NotImplementedError, for a score the student's code does not handle yet, fails."""
-    try:
-        return fn(*args, **kwargs)
-    except NotImplementedError as exc:
-        if str(exc).startswith('Milestone 2: write '):
-            pytest.skip(str(exc))
-        raise
+    if is_stub(fn):
+        pytest.skip(f'{fn.__name__}() is not written yet')
+    return fn(*args, **kwargs)
 
 
 def close_to_page(value: float, page_percent: float) -> bool:
@@ -195,3 +205,20 @@ def test_a_ten_point_tiebreak_is_played_in_the_final_set_only():
     expected = s7 * s7 + 2 * s7 * (1 - s7) * s10
     assert math.isclose(call(model.match_win, A, B, best_of=3, final_tiebreak=10), expected,
                         abs_tol=1e-12)
+
+
+def test_two_sets_up_in_best_of_five_is_not_over():
+    s = call(model.set_win, A, B)
+    expected = 1 - (1 - s) ** 3
+    assert math.isclose(call(model.match_win_from, A, B, sets=(2, 0), best_of=5), expected,
+                        abs_tol=1e-12)
+    assert math.isclose(call(model.match_win_from, 0.6, 0.6, sets=(2, 0), best_of=5), 0.875,
+                        abs_tol=1e-12)
+
+
+def test_an_early_set_tiebreak_goes_to_seven_even_with_a_ten_point_final_set():
+    """At 6-6 in the first set, 7-5 in the tie-break wins the set. The 10-point rule is for
+    the final set only."""
+    won_set = call(model.match_win_from, A, B, sets=(1, 0), final_tiebreak=10)
+    at_7_5 = call(model.match_win_from, A, B, games=(6, 6), points=(7, 5), final_tiebreak=10)
+    assert math.isclose(at_7_5, won_set, abs_tol=1e-12)

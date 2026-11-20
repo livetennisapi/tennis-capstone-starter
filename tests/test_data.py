@@ -188,3 +188,16 @@ def test_a_download_cut_off_half_way_is_an_error_line(tmp_path, monkeypatch, pin
     assert data.main(['--dir', str(tmp_path)]) == 1
     assert capsys.readouterr().err.startswith('error: ')
     assert not list(tmp_path.glob('*.part'))
+
+
+def test_data_dir_set_after_import_is_used(monkeypatch, tmp_path, pinned):
+    monkeypatch.setenv('CAPSTONE_DATA_DIR', str(tmp_path))
+    monkeypatch.setattr(data, '_get', FakeZenodo(BLOBS))
+    assert data.download(log=lambda *_: None) == tmp_path
+    data.check()
+
+
+def test_metadata_that_is_not_json_is_an_error_line(tmp_path, monkeypatch, pinned, capsys):
+    monkeypatch.setattr(data, '_get', lambda url: io.BytesIO(b'{"doi":'))
+    assert data.main(['--dir', str(tmp_path)]) == 1
+    assert 'not JSON' in capsys.readouterr().err

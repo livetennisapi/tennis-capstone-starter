@@ -47,7 +47,7 @@ def _default_dir() -> Path:
     return Path.cwd() / 'data'
 
 
-DEFAULT_DIR = _default_dir()
+DEFAULT_DIR = _default_dir()  # as it was at import, for display only; calls resolve again
 USER_AGENT = 'tennis-capstone-starter/1.0'
 TIMEOUT = 60
 
@@ -105,7 +105,10 @@ def _get(url: str):
 def fetch_record(doi: str = VERSION_DOI) -> dict:
     """The record's metadata from the Zenodo API, checked against the pinned version."""
     with _get(record_url(doi)) as resp:
-        record = json.load(resp)
+        try:
+            record = json.load(resp)
+        except ValueError as exc:
+            raise DataError(f'Zenodo sent record metadata that is not JSON: {exc}') from exc
     if record.get('doi') != VERSION_DOI or record.get('conceptdoi') != CONCEPT_DOI:
         raise DataError(
             f'Zenodo answered with {record.get("doi")!r}, not version {VERSION} '
@@ -159,9 +162,9 @@ def _download(url: str, dest: Path, expected: DataFile) -> None:
         part.unlink(missing_ok=True)
 
 
-def download(data_dir: Path | str = DEFAULT_DIR, *, log=print) -> Path:
+def download(data_dir: Path | str | None = None, *, log=print) -> Path:
     """Download any file that is missing or wrong, check them all, and return the folder."""
-    data_dir = Path(data_dir)
+    data_dir = Path(data_dir) if data_dir is not None else _default_dir()
     data_dir.mkdir(parents=True, exist_ok=True)
     record = None
     for f in FILES:
@@ -181,20 +184,21 @@ def download(data_dir: Path | str = DEFAULT_DIR, *, log=print) -> Path:
     return data_dir
 
 
-def check(data_dir: Path | str = DEFAULT_DIR) -> None:
+def check(data_dir: Path | str | None = None) -> None:
     """Check the downloaded files without touching the network."""
+    folder = Path(data_dir) if data_dir is not None else _default_dir()
     for f in FILES:
-        verify(Path(data_dir) / f.name, f)
+        verify(folder / f.name, f)
 
 
-def _read(name: str, data_dir: Path | str, **kwargs):
+def _read(name: str, data_dir: Path | str | None, **kwargs):
     import pandas as pd
-    path = Path(data_dir) / name
+    path = (Path(data_dir) if data_dir is not None else _default_dir()) / name
     verify(path, next(f for f in FILES if f.name == name))
     return pd.read_csv(path, **kwargs)
 
 
-def load_matches(data_dir: Path | str = DEFAULT_DIR):
+def load_matches(data_dir: Path | str | None = None):
     """matches.csv.gz as a DataFrame: one row per completed match, 2023-01-01 to 2026-08-13."""
     import pandas as pd
     df = _read('matches.csv.gz', data_dir, low_memory=False,
@@ -205,12 +209,12 @@ def load_matches(data_dir: Path | str = DEFAULT_DIR):
     return df
 
 
-def load_players(data_dir: Path | str = DEFAULT_DIR):
+def load_players(data_dir: Path | str | None = None):
     """players.csv.gz as a DataFrame: one row per player."""
     return _read('players.csv.gz', data_dir, dtype={'birthday': 'string', 'hand': 'string'})
 
 
-def load_points(data_dir: Path | str = DEFAULT_DIR):
+def load_points(data_dir: Path | str | None = None):
     """points_sample_2026-06.csv.gz as a DataFrame: one row per observed score state.
 
     The point columns stay text, because a game uses 0, 15, 30, 40, A and AD while a
@@ -230,7 +234,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog='python -m capstone.data',
         description=f'Download the public tennis sample ({VERSION_DOI}) and check it.')
-    parser.add_argument('--dir', default=str(DEFAULT_DIR), help='where the files go')
+    parser.add_argument('--dir', default=None,
+                        help='where the files go (default: CAPSTONE_DATA_DIR or data/)')
     parser.add_argument('--check', action='store_true',
                         help='check files already downloaded, without the network')
     args = parser.parse_args(argv)
