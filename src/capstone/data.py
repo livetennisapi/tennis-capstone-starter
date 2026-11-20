@@ -6,7 +6,8 @@ so every student in a class works on the same files. Each file is checked three 
 is used: its size, the MD5 checksum Zenodo publishes, and a SHA-256 checksum pinned below.
 
 The data is under CC BY-NC 4.0, not under this repository's MIT licence. It is downloaded into
-data/ and never committed.
+data/ at the root of this repository and never committed. Set CAPSTONE_DATA_DIR to use another
+folder, for example on Colab.
 
 Run it from the repository root:
 
@@ -20,6 +21,7 @@ import hashlib
 import json
 import os
 import sys
+import tempfile
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,7 +33,20 @@ VERSION = '1.0.3'
 LICENCE = 'CC BY-NC 4.0'
 LICENCE_URL = 'https://creativecommons.org/licenses/by-nc/4.0/'
 ZENODO_API = 'https://zenodo.org/api/records/'
-DEFAULT_DIR = Path(__file__).resolve().parents[2] / 'data'
+
+
+def _default_dir() -> Path:
+    """CAPSTONE_DATA_DIR if set. Otherwise data/ at the repository root when the package runs
+    from a clone (pip install -e), or data/ in the current folder when it was installed."""
+    if os.environ.get('CAPSTONE_DATA_DIR'):
+        return Path(os.environ['CAPSTONE_DATA_DIR']).expanduser()
+    root = Path(__file__).resolve().parents[2]
+    if (root / 'pyproject.toml').is_file():
+        return root / 'data'
+    return Path.cwd() / 'data'
+
+
+DEFAULT_DIR = _default_dir()
 USER_AGENT = 'tennis-capstone-starter/1.0'
 TIMEOUT = 60
 
@@ -68,9 +83,22 @@ def record_url(doi: str) -> str:
     return ZENODO_API + doi[len(prefix):]
 
 
+class _HttpsOnlyRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect only to another https address. The checksums guard the bytes, and
+    this keeps the request itself off plain http."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not newurl.startswith('https://'):
+            raise DataError(f'refusing a redirect to {newurl}')
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_HttpsOnlyRedirects)
+
+
 def _get(url: str):
     req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
-    return urllib.request.urlopen(req, timeout=TIMEOUT)  # noqa: S310 (https only, see callers)
+    return _OPENER.open(req, timeout=TIMEOUT)
 
 
 def fetch_record(doi: str = VERSION_DOI) -> dict:
@@ -118,9 +146,10 @@ def verify(path: Path, expected: DataFile) -> None:
 def _download(url: str, dest: Path, expected: DataFile) -> None:
     if not url.startswith('https://zenodo.org/'):
         raise DataError(f'refusing to download {expected.name} from {url}')
-    part = dest.with_name(dest.name + '.part')
+    fd, name = tempfile.mkstemp(prefix=dest.name + '.', suffix='.part', dir=dest.parent)
+    part = Path(name)
     try:
-        with _get(url) as resp, open(part, 'wb') as out:
+        with os.fdopen(fd, 'wb') as out, _get(url) as resp:
             for chunk in iter(lambda: resp.read(1 << 20), b''):
                 out.write(chunk)
         verify(part, expected)
@@ -166,9 +195,13 @@ def _read(name: str, data_dir: Path | str, **kwargs):
 
 def load_matches(data_dir: Path | str = DEFAULT_DIR):
     """matches.csv.gz as a DataFrame: one row per completed match, 2023-01-01 to 2026-08-13."""
-    return _read('matches.csv.gz', data_dir, low_memory=False,
-                 dtype={'tier_key': 'string', 'is_qualifying': 'string', 'indoor': 'string'},
-                 parse_dates=['scheduled_time_utc'])
+    import pandas as pd
+    df = _read('matches.csv.gz', data_dir, low_memory=False,
+               dtype={'tournament_key': 'string', 'tier_key': 'string',
+                      'is_qualifying': 'string', 'indoor': 'string'})
+    df['scheduled_time_utc'] = pd.to_datetime(df['scheduled_time_utc'], format='ISO8601',
+                                              utc=True)
+    return df
 
 
 def load_players(data_dir: Path | str = DEFAULT_DIR):
@@ -183,9 +216,13 @@ def load_points(data_dir: Path | str = DEFAULT_DIR):
     tie-break uses counts. games_p1 and games_p2 stay as their JSON text, for example "[6, 4]".
     The rows keep the file's order, which is capture order within each match.
     """
-    return _read('points_sample_2026-06.csv.gz', data_dir,
-                 dtype={'points_p1': 'string', 'points_p2': 'string', 'server': 'Int8'},
-                 parse_dates=['timestamp_utc'])
+    import pandas as pd
+    df = _read('points_sample_2026-06.csv.gz', data_dir,
+               dtype={'points_p1': 'string', 'points_p2': 'string', 'server': 'Int8'})
+    # ISO8601 because a few timestamps have no fraction of a second, which defeats the
+    # single format pandas would otherwise guess.
+    df['timestamp_utc'] = pd.to_datetime(df['timestamp_utc'], format='ISO8601', utc=True)
+    return df
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -203,7 +240,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             download(args.dir)
             print(f'Done. Data under {LICENCE}: {LICENCE_URL}')
-    except DataError as exc:
+    except (DataError, OSError) as exc:
+        # OSError covers no network, a timeout, a dropped connection and a full disk.
         print(f'error: {exc}', file=sys.stderr)
         return 1
     return 0

@@ -4,7 +4,7 @@
 
 **Starter code for "Does the score predict the match?", a tennis capstone for data science and statistics courses from [Live Tennis API](https://livetennisapi.com).**
 
-[Website](https://livetennisapi.com) · [Capstone brief](https://livetennisapi.com/teach/capstone) · [Docs](https://docs.livetennisapi.com) · [Win probability calculator](https://livetennisapi.com/tools/win-probability) · [Academic dataset](https://livetennisapi.com/data/academic) · [Changelog](https://docs.livetennisapi.com/changelog.html)
+[Website](https://livetennisapi.com) · [Capstone brief](https://livetennisapi.com/teach/capstone) · [Docs](https://docs.livetennisapi.com) · [Win probability calculator](https://livetennisapi.com/tools/win-probability) · [Academic dataset](https://livetennisapi.com/data/academic) · [Pricing](https://livetennisapi.com/pricing) · [Dashboard](https://livetennisapi.com/account/) · [Changelog](https://docs.livetennisapi.com/changelog.html)
 
 [![CI](https://github.com/livetennisapi/tennis-capstone-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/livetennisapi/tennis-capstone-starter/actions/workflows/ci.yml)
 [![Data DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22048730.svg)](https://doi.org/10.5281/zenodo.22048730)
@@ -43,7 +43,7 @@ points_sample_2026-06.csv.gz: checksums match
 Done. Data under CC BY-NC 4.0: https://creativecommons.org/licenses/by-nc/4.0/
 ```
 
-A second run finds the files in `data/` and downloads nothing. `python -m capstone.data --check` checks them without the network.
+A second run finds the files in `data/` and downloads nothing. `python -m capstone.data --check` checks them without the network. To keep the data somewhere else, on Colab for example, set `CAPSTONE_DATA_DIR` to a folder.
 
 ## The four milestones
 
@@ -70,7 +70,7 @@ The data is the public sample of the Live Tennis API point-by-point dataset, DOI
 
 [`src/capstone/data.py`](src/capstone/data.py) asks the Zenodo API for the record and refuses any version but 1.0.3. It checks each file's size, the MD5 checksum Zenodo lists and a SHA-256 checksum pinned in the code. A file that fails is deleted, never used.
 
-Read the record's own `README.md` and `DATA_DICTIONARY.md` before milestone 1.
+Read the [record's](https://zenodo.org/records/23718893) own `README.md` and `DATA_DICTIONARY.md` before milestone 1.
 
 **Licence.** The data is under [Creative Commons Attribution NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/), as the Zenodo record states. You may use it for coursework and research with credit to Live Tennis API, but not for commercial work. It is not part of this repository and is not covered by its MIT licence. The loader puts it in `data/`, which git ignores.
 
@@ -104,7 +104,7 @@ The full dataset is free for non-commercial academic research and teaching, on a
 
 ## For teachers
 
-The repository has no worked solutions, so you can hand it out for graded work. The rubric is on [the brief](https://livetennisapi.com/teach/capstone#rubric). CI runs the offline tests on Python 3.11 and 3.13. A second job downloads the real files from Zenodo and checks them. In a class copy, a student's model turns the skipped checks into passes or failures.
+The repository has no worked solutions, so you can hand it out for graded work. The rubric is on [the brief](https://livetennisapi.com/teach/capstone#rubric). CI runs the offline tests on Python 3.11, 3.13 and 3.14. A second job downloads the real files from Zenodo and checks them. The repository is a template, so **Use this template** on GitHub makes a class copy with the same checks. In a class copy, a student's model turns the skipped checks into passes or failures.
 
 Tell us how it went at hello@livetennisapi.com. We never publish anything about a class without the teacher's consent. Problems with the starter are welcome as [issues](https://github.com/livetennisapi/tennis-capstone-starter/issues).
 

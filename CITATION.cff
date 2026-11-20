@@ -26,7 +26,7 @@ keywords:
   - tennis
   - sports analytics
 references:
-  - type: dataset
+  - type: data
     title: "Tennis Point-by-Point Dataset — ATP, WTA, Challenger, ITF (Public Sample)"
     authors:
       - name: "Live Tennis API"

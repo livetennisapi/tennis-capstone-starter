@@ -112,5 +112,53 @@ def test_deuce_and_advantage_count_on():
 
 
 def test_match_from_a_won_match_is_certain():
-    assert call(model.match_win_from, A, B, sets=(2, 0)) == 1
-    assert call(model.match_win_from, A, B, sets=(1, 3), best_of=5) == 0
+    assert math.isclose(call(model.match_win_from, A, B, sets=(2, 0)), 1, abs_tol=1e-12)
+    assert math.isclose(call(model.match_win_from, A, B, sets=(1, 3), best_of=5), 0,
+                        abs_tol=1e-12)
+
+
+@pytest.mark.parametrize('score', [
+    dict(sets=(1, 1), games=(4, 5), points=(0, 0)),
+    dict(sets=(0, 1), games=(2, 3), points=(1, 3)),
+    dict(sets=(1, 0), games=(4, 4), points=(0, 3)),
+    dict(sets=(1, 1), games=(6, 6), points=(5, 2)),
+    dict(sets=(1, 1), games=(6, 6), points=(8, 9)),
+], ids=str)
+def test_swapping_the_players_mirrors_the_chance(score):
+    """From any score with B serving, A's chance is 1 minus B's chance with the players, the
+    score and the serve swapped. A model that ignores a_serving, or reads the points the wrong
+    way round when B serves, fails this."""
+    flip = {k: v[::-1] for k, v in score.items()}
+    b_serving = call(model.match_win_from, A, B, **score, a_serving=False, final_tiebreak=10)
+    mirrored = call(model.match_win_from, B, A, **flip, a_serving=True, final_tiebreak=10)
+    assert math.isclose(b_serving, 1 - mirrored, abs_tol=1e-12)
+
+
+def _next_server_in_tiebreak(points: tuple[int, int], a_serving: bool) -> bool:
+    """Who serves the point after this one: one point for the first server, then two each."""
+    return (not a_serving) if sum(points) % 2 == 0 else a_serving
+
+
+@pytest.mark.parametrize('points', [(0, 0), (3, 2), (5, 1), (5, 2), (8, 8)], ids=str)
+@pytest.mark.parametrize('a_serving', [True, False])
+def test_each_tiebreak_point_moves_the_chance_the_right_way(points, a_serving):
+    """Inside the final-set tie-break to 10, the chance now is the chance of winning the
+    point times the chance after it, plus the same for losing it."""
+    here = dict(sets=(1, 1), games=(6, 6), final_tiebreak=10)
+    nxt = _next_server_in_tiebreak(points, a_serving)
+    now = call(model.match_win_from, A, B, **here, points=points, a_serving=a_serving)
+    won = call(model.match_win_from, A, B, **here, points=(points[0] + 1, points[1]),
+               a_serving=nxt)
+    lost = call(model.match_win_from, A, B, **here, points=(points[0], points[1] + 1),
+                a_serving=nxt)
+    w = A if a_serving else 1 - B
+    assert math.isclose(now, w * won + (1 - w) * lost, abs_tol=1e-12)
+    assert lost < now < won
+
+
+def test_a_ten_point_tiebreak_is_played_in_the_final_set_only():
+    s7 = call(model.set_win, A, B, tiebreak_target=7)
+    s10 = call(model.set_win, A, B, tiebreak_target=10)
+    expected = s7 * s7 + 2 * s7 * (1 - s7) * s10
+    assert math.isclose(call(model.match_win, A, B, best_of=3, final_tiebreak=10), expected,
+                        abs_tol=1e-12)

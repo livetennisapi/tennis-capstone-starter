@@ -23,4 +23,6 @@ def test_notebook_is_valid_clean_and_parses(path):
     for cell in book.cells:
         if cell.cell_type == 'code':
             assert cell.outputs == [] and cell.execution_count is None
-            ast.parse(cell.source)
+            # IPython magics such as %autoreload are not Python.
+            ast.parse('\n'.join(line for line in cell.source.splitlines()
+                                 if not line.lstrip().startswith('%')))

@@ -21,7 +21,7 @@ CSV = {
                                     '1,0,0,[0],[0],0,0,1,False,2026-06-01 10:01:00.000001\n'
                                     '1,0,0,[0],[0],15,0,1,False,2026-06-01 10:01:30.000001\n'
                                     '1,0,0,"[6, 6]","[6, 6]",AD,40,,False,'
-                                    '2026-06-01 11:01:30.000001\n',
+                                    '2026-06-01 11:01:30\n',
 }
 
 
@@ -145,8 +145,32 @@ def test_loaders_keep_scores_as_text_and_parse_times(tmp_path, monkeypatch, pinn
     pts = data.load_points(tmp_path)
     assert list(pts.points_p1) == ['0', '15', 'AD']
     assert pts.server.isna().tolist() == [False, False, True]
-    assert str(pts.timestamp_utc.dtype).startswith('datetime64')
+    assert str(pts.timestamp_utc.dtype).startswith('datetime64'), 'a row without a fraction'
+    assert str(pts.timestamp_utc.dt.tz) == 'UTC'
+    assert pts.timestamp_utc.iloc[2].second == 30
     assert pts.games_p1.iloc[2] == '[6, 6]'
     matches = data.load_matches(tmp_path)
     assert matches.best_of.iloc[0] == 'BO3'
+    assert str(matches.scheduled_time_utc.dt.tz) == 'UTC'
+    assert matches.tournament_key.iloc[0] == '5'
     assert data.load_players(tmp_path).name.tolist() == ['Player A', 'Player B']
+
+
+def test_no_network_is_an_error_line_not_a_traceback(tmp_path, monkeypatch, pinned, capsys):
+    def offline(url):
+        raise OSError('no network')
+    monkeypatch.setattr(data, '_get', offline)
+    assert data.main(['--dir', str(tmp_path)]) == 1
+    assert 'error: no network' in capsys.readouterr().err
+    assert not list(tmp_path.glob('*.part'))
+
+
+def test_redirects_stay_on_https():
+    handler = data._HttpsOnlyRedirects()
+    with pytest.raises(data.DataError, match='refusing a redirect'):
+        handler.redirect_request(None, None, 302, 'Found', {}, 'http://zenodo.org/x')
+
+
+def test_data_dir_follows_the_environment(monkeypatch, tmp_path):
+    monkeypatch.setenv('CAPSTONE_DATA_DIR', str(tmp_path))
+    assert data._default_dir() == tmp_path
